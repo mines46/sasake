@@ -1,0 +1,57 @@
++--------------------------------+
+                 |            STUDENTS            |
+                 +--------------------------------+
+                 | PK  id             UUID        |
+                 |     first_name     VARCHAR(100)|
+                 |     last_name      VARCHAR(100)|
+                 |     email          VARCHAR(255)|
+                 |     phone          VARCHAR(50) |
+                 |     guardian_name  VARCHAR(100)|
+                 |     guardian_phone VARCHAR(50) |
+                 |     status         VARCHAR(20) |
+                 |     created_at     TIMESTAMPTZ |
+                 +--------------------------------+
+                       |           |          |
+                       | 1         | 1        | 1
+                       |           |          |
+                       | N         | N        | N
+         +-------------+           |          +------------------+
+         |                         |                             |
+         v                         v                             v
++------------------+     +--------------------+       +----------------------+
+|   ENROLLMENTS    |     |     ATTENDANCE     |       |       INVOICES       |
++------------------+     +--------------------+       +----------------------+
+| PK  id       UUID|     | PK  id       UUID  |       | PK  id           UUID|
+| FK  student_id   |     | FK  student_id     |       |     invoice_number   |
+| FK  class_id     |     | FK  class_id       |       | FK  student_id       |
+|     status       |     |     date     DATE  |       |     issue_date   DATE|
+|     enrolled_at  |     |     status         |       |     due_date     DATE|
++------------------+     |     notes    TEXT  |       |     subtotal_cents   |
+         ^               +--------------------+       |     discount_cents   |
+         | N                       ^                  |     total_cents      |
+         |                         | N                |     status           |
+         | 1                       |                  |     paid_at          |
++------------------+               |                  +----------------------+
+|     CLASSES      |               | 1                           | 1
++------------------+               |                             |
+| PK  id       UUID|---------------+                             |
+|     name         |                                             | N
+|     instructor   | 1                                           v
+|     capacity     |                                  +----------------------+
+|     price_cents  |                                  |    INVOICE_ITEMS     |
+|     billing_per  | 1                                +----------------------+
+|     is_active    |---+                              | PK  id          UUID |
++------------------+   |                              | FK  invoice_id  UUID |
+                       |                              |     description      |
+                       | N                            |     quantity    INT  |
+                       v                              |     unit_price_cents |
+             +--------------------+                   |     total_cents      |
+             |  CLASS_SCHEDULES   |                   +----------------------+
+             +--------------------+
+             | PK  id       UUID  |
+             | FK  class_id UUID  |
+             |     day_of_week INT|
+             |     start_time TIME|
+             |     end_time   TIME|
+             |     room    VARCHAR|
+             +--------------------+
