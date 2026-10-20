@@ -19,6 +19,7 @@ type Student struct {
 	LastName      string        `json:"last_name"`
 	Email         string        `json:"email"`
 	Phone         *string       `json:"phone,omitempty"`
+	IsMinor       bool          `json:"is_minor"`
 	GuardianName  *string       `json:"guardian_name,omitempty"`
 	GuardianPhone *string       `json:"guardian_phone,omitempty"`
 	Status        StudentStatus `json:"status"`
@@ -32,6 +33,7 @@ type CreateStudentInput struct {
 	LastName      string        `json:"last_name"`
 	Email         string        `json:"email"`
 	Phone         *string       `json:"phone,omitempty"`
+	IsMinor       *bool         `json:"is_minor,omitempty"`
 	GuardianName  *string       `json:"guardian_name,omitempty"`
 	GuardianPhone *string       `json:"guardian_phone,omitempty"`
 	Status        StudentStatus `json:"status,omitempty"`
@@ -43,6 +45,7 @@ type UpdateStudentInput struct {
 	LastName      *string        `json:"last_name,omitempty"`
 	Email         *string        `json:"email,omitempty"`
 	Phone         *string        `json:"phone,omitempty"`
+	IsMinor       *bool          `json:"is_minor,omitempty"`
 	GuardianName  *string        `json:"guardian_name,omitempty"`
 	GuardianPhone *string        `json:"guardian_phone,omitempty"`
 	Status        *StudentStatus `json:"status,omitempty"`

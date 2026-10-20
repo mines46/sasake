@@ -6,18 +6,21 @@ import {
   AlertCircle, 
   FileText, 
   Sparkles,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
-import { mockStudents, mockClasses, mockEnrollments, mockAttendanceHistory } from '../data/mockData';
-import type { EnrichedInvoice, ClassItem } from '../types';
+import { mockStudents, mockClasses, mockEnrollments, mockAttendanceHistory, mockClassSchedules } from '../data/mockData';
+import type { EnrichedInvoice, ClassItem, Student } from '../types';
 import { calculateStudentAttendanceBilling } from '../utils/billingCalculator';
 import { formatCents } from '../utils/formatters';
+import { invoiceApi } from '../api/invoices';
 
 interface AttendanceInvoiceGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onInvoiceCreated: (invoice: EnrichedInvoice) => void;
   classes?: ClassItem[];
+  students?: Student[];
 }
 
 export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGeneratorModalProps> = ({
@@ -25,18 +28,21 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
   onClose,
   onInvoiceCreated,
   classes = mockClasses,
+  students = mockStudents,
 }) => {
-  const [selectedStudentId, setSelectedStudentId] = useState(mockStudents[0]?.id || '');
+  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || mockStudents[0]?.id || '');
   const [startDate, setStartDate] = useState('2026-09-01');
   const [endDate, setEndDate] = useState('2026-09-30');
   const [discountDollars, setDiscountDollars] = useState('0');
   const [dueDate, setDueDate] = useState('2026-10-10');
   const [notes, setNotes] = useState('September 2026 Attendance-based Tuition Recibo');
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Find student info
   const selectedStudent = useMemo(
-    () => mockStudents.find((s) => s.id === selectedStudentId),
-    [selectedStudentId]
+    () => students.find((s) => s.id === selectedStudentId) || mockStudents.find((s) => s.id === selectedStudentId),
+    [students, selectedStudentId]
   );
 
   // Compute live billing calculation using our engine
@@ -49,39 +55,57 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
       enrollments: mockEnrollments,
       classes,
       attendanceRecords: mockAttendanceHistory,
+      schedules: mockClassSchedules,
       discountCents,
     });
   }, [selectedStudentId, startDate, endDate, discountDollars, classes]);
 
   if (!isOpen) return null;
 
-  const handleGenerateInvoice = (e: React.FormEvent) => {
+  const handleGenerateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) return;
 
-    const invoiceNum = `REC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    setIsSubmitting(true);
+    const discountCents = Math.round(parseFloat(discountDollars || '0') * 100);
 
-    const newInvoice: EnrichedInvoice = {
-      id: `inv-${Date.now()}`,
-      invoice_number: invoiceNum,
-      student_id: selectedStudent.id,
-      student_name: `${selectedStudent.first_name} ${selectedStudent.last_name}`,
-      student_email: selectedStudent.email,
-      guardian_name: selectedStudent.guardian_name,
-      guardian_phone: selectedStudent.guardian_phone,
-      issue_date: new Date().toISOString().split('T')[0],
-      due_date: dueDate,
-      subtotal_cents: calculation.subtotal_cents,
-      discount_cents: calculation.discount_cents,
-      total_cents: calculation.total_cents,
-      status: 'pending',
-      notes,
-      created_at: new Date().toISOString(),
-      items: calculation.invoiceItems,
-    };
-
-    onInvoiceCreated(newInvoice);
-    onClose();
+    try {
+      // 1. Attempt to generate via authoritative backend endpoint
+      const created = await invoiceApi.generateAttendanceInvoice({
+        student_id: selectedStudent.id,
+        start_date: startDate,
+        end_date: endDate,
+        due_date: dueDate,
+        discount_cents: discountCents,
+        notes: notes.trim() || undefined,
+      });
+      onInvoiceCreated(created);
+    } catch {
+      // 2. Fallback to client computation
+      const invoiceNum = `REC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const fallbackInvoice: EnrichedInvoice = {
+        id: `inv-${Date.now()}`,
+        invoice_number: invoiceNum,
+        student_id: selectedStudent.id,
+        student_name: `${selectedStudent.first_name} ${selectedStudent.last_name}`,
+        student_email: selectedStudent.email,
+        guardian_name: selectedStudent.guardian_name,
+        guardian_phone: selectedStudent.guardian_phone,
+        issue_date: new Date().toISOString().split('T')[0],
+        due_date: dueDate,
+        subtotal_cents: calculation.subtotal_cents,
+        discount_cents: calculation.discount_cents,
+        total_cents: calculation.total_cents,
+        status: 'pending',
+        notes,
+        created_at: new Date().toISOString(),
+        items: calculation.invoiceItems,
+      };
+      onInvoiceCreated(fallbackInvoice);
+    } finally {
+      setIsSubmitting(false);
+      onClose();
+    }
   };
 
   return (
@@ -205,29 +229,44 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
                       </div>
                     </div>
 
-                    {/* Attendance Pills & Breakdown */}
-                    <div className="flex items-center gap-2 flex-wrap text-xs pt-2 border-t border-slate-100">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium border border-emerald-100">
-                        <CheckCircle2 className="w-3 h-3" />
-                        {item.present_count + item.late_count} Attended
-                      </span>
-
-                      {item.unexcused_absent_count > 0 && (
-                        <span 
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-semibold border border-amber-200"
-                          title="Policy: Unexcused absences are counted as assisted and charged"
-                        >
-                          <AlertCircle className="w-3 h-3 text-amber-600" />
-                          {item.unexcused_absent_count} Unexcused (Billed)
+                    {/* Attendance / Advance Billing Pills & Breakdown */}
+                    {item.is_advance_billing || item.class_type === 'group' ? (
+                      <div className="flex items-center gap-2 flex-wrap text-xs pt-2 border-t border-slate-100">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                          <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                          Clase Grupal — Facturación por adelantado ({item.billable_sessions} sesiones del mes)
                         </span>
-                      )}
-
-                      {item.excused_count > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 font-medium border border-sky-100">
-                          {item.excused_count} Excused (Waived)
+                        <span className="text-[11px] text-slate-500">
+                          Cobro mensual completo por adelantado
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-wrap text-xs pt-2 border-t border-slate-100">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold border border-purple-200">
+                          Clase Individual
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium border border-emerald-100">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {item.present_count + item.late_count} Asistidas
+                        </span>
+
+                        {item.unexcused_absent_count > 0 && (
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-semibold border border-amber-200"
+                            title="Regla: Las faltas sin justificar se cobran como asistidas"
+                          >
+                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                            {item.unexcused_absent_count} No justificadas (Facturadas)
+                          </span>
+                        )}
+
+                        {item.excused_count > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 font-medium border border-sky-100">
+                            {item.excused_count} Justificadas (Exentas)
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -317,11 +356,20 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
             </button>
             <button
               type="submit"
-              disabled={calculation.invoiceItems.length === 0}
+              disabled={calculation.invoiceItems.length === 0 || isSubmitting}
               className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm shadow-indigo-600/20 transition-all"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              Issue Official Recibo
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Generating Recibo...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Issue Official Recibo
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -7,21 +7,27 @@ import {
   Receipt, 
   Settings, 
   GraduationCap, 
-  X
+  X,
+  LogOut
 } from 'lucide-react';
+import type { User } from '../types';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  currentUser?: User | null;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   isOpen, 
   onClose, 
   activeTab, 
-  setActiveTab 
+  setActiveTab,
+  currentUser,
+  onLogout
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -123,14 +129,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* User profile footer */}
-        <div className="p-4 border-t border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">
-            AM
+        <div className="p-4 border-t border-slate-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-inner flex-shrink-0 uppercase">
+              {(currentUser?.username || 'PR').substring(0, 2)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">
+                {currentUser?.full_name || currentUser?.username || 'Profesor Encina'}
+              </p>
+              <p className="text-xs text-indigo-400 truncate">
+                {currentUser?.role === 'admin' ? 'Administrador' : 'Profesor / Docente'}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">Alex Mercer</p>
-            <p className="text-xs text-slate-400 truncate">Academy Director</p>
-          </div>
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </aside>
     </>

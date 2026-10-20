@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sasake-academy
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+      - ENV=production
+    # If connecting to a DB on host or LAN, extra_hosts or host network can be used if needed
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+

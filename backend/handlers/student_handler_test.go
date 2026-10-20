@@ -51,12 +51,18 @@ func (m *mockStudentStore) Create(ctx context.Context, input models.CreateStuden
 		}
 	}
 
+	isMinor := false
+	if input.IsMinor != nil {
+		isMinor = *input.IsMinor
+	}
+
 	st := models.Student{
 		ID:            "mock-uuid-1",
 		FirstName:     input.FirstName,
 		LastName:      input.LastName,
 		Email:         input.Email,
 		Phone:         input.Phone,
+		IsMinor:       isMinor,
 		GuardianName:  input.GuardianName,
 		GuardianPhone: input.GuardianPhone,
 		Status:        input.Status,

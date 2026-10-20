@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Menu, Search, Bell, Plus, Calendar } from 'lucide-react';
+import { Menu, Search, Bell, Plus, Calendar, LogOut } from 'lucide-react';
+import type { User } from '../types';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -7,6 +8,8 @@ interface HeaderProps {
   onOpenNewInvoice: () => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  currentUser?: User | null;
+  onLogout?: () => void;
 }
 
 const getFormattedToday = () =>
@@ -23,6 +26,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewInvoice,
   searchQuery,
   setSearchQuery,
+  currentUser,
+  onLogout,
 }) => {
   // Today's formatted display date
   const [todayFormatted] = useState(getFormattedToday);
@@ -84,11 +89,39 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onOpenNewInvoice}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-500/20 transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Invoice</span>
           </button>
+
+          {/* User profile pill */}
+          {currentUser && (
+            <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-slate-200 text-xs">
+              <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[11px] uppercase">
+                {currentUser.username.substring(0, 2)}
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-slate-800 leading-tight truncate max-w-[120px]">
+                  {currentUser.full_name || currentUser.username}
+                </p>
+                <p className="text-[10px] text-indigo-600 font-medium capitalize">
+                  {currentUser.role === 'teacher' ? 'Profesor' : currentUser.role}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

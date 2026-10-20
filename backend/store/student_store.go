@@ -35,7 +35,7 @@ func NewStudentStore(pool *pgxpool.Pool) *PostgresStudentStore {
 
 func (s *PostgresStudentStore) GetAll(ctx context.Context, status string, search string) ([]models.Student, error) {
 	query := `
-		SELECT id, first_name, last_name, email, phone, guardian_name, guardian_phone, status, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
 		FROM students
 		WHERE 1=1
 	`
@@ -72,6 +72,7 @@ func (s *PostgresStudentStore) GetAll(ctx context.Context, status string, search
 			&st.LastName,
 			&st.Email,
 			&st.Phone,
+			&st.IsMinor,
 			&st.GuardianName,
 			&st.GuardianPhone,
 			&st.Status,
@@ -92,7 +93,7 @@ func (s *PostgresStudentStore) GetAll(ctx context.Context, status string, search
 
 func (s *PostgresStudentStore) GetByID(ctx context.Context, id string) (*models.Student, error) {
 	query := `
-		SELECT id, first_name, last_name, email, phone, guardian_name, guardian_phone, status, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
 		FROM students
 		WHERE id = $1
 	`
@@ -103,6 +104,7 @@ func (s *PostgresStudentStore) GetByID(ctx context.Context, id string) (*models.
 		&st.LastName,
 		&st.Email,
 		&st.Phone,
+		&st.IsMinor,
 		&st.GuardianName,
 		&st.GuardianPhone,
 		&st.Status,
@@ -125,10 +127,17 @@ func (s *PostgresStudentStore) Create(ctx context.Context, input models.CreateSt
 		status = models.StudentStatusActive
 	}
 
+	isMinor := false
+	if input.IsMinor != nil {
+		isMinor = *input.IsMinor
+	} else if input.GuardianName != nil && strings.TrimSpace(*input.GuardianName) != "" {
+		isMinor = true
+	}
+
 	query := `
-		INSERT INTO students (first_name, last_name, email, phone, guardian_name, guardian_phone, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, first_name, last_name, email, phone, guardian_name, guardian_phone, status, created_at, updated_at
+		INSERT INTO students (first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
 	`
 
 	var st models.Student
@@ -139,6 +148,7 @@ func (s *PostgresStudentStore) Create(ctx context.Context, input models.CreateSt
 		input.LastName,
 		input.Email,
 		input.Phone,
+		isMinor,
 		input.GuardianName,
 		input.GuardianPhone,
 		status,
@@ -148,6 +158,7 @@ func (s *PostgresStudentStore) Create(ctx context.Context, input models.CreateSt
 		&st.LastName,
 		&st.Email,
 		&st.Phone,
+		&st.IsMinor,
 		&st.GuardianName,
 		&st.GuardianPhone,
 		&st.Status,
@@ -187,6 +198,10 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 	if input.Phone != nil {
 		phone = input.Phone
 	}
+	isMinor := current.IsMinor
+	if input.IsMinor != nil {
+		isMinor = *input.IsMinor
+	}
 	guardianName := current.GuardianName
 	if input.GuardianName != nil {
 		guardianName = input.GuardianName
@@ -202,9 +217,9 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 
 	query := `
 		UPDATE students
-		SET first_name = $1, last_name = $2, email = $3, phone = $4, guardian_name = $5, guardian_phone = $6, status = $7, updated_at = $8
-		WHERE id = $9
-		RETURNING id, first_name, last_name, email, phone, guardian_name, guardian_phone, status, created_at, updated_at
+		SET first_name = $1, last_name = $2, email = $3, phone = $4, is_minor = $5, guardian_name = $6, guardian_phone = $7, status = $8, updated_at = $9
+		WHERE id = $10
+		RETURNING id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
 	`
 
 	var updated models.Student
@@ -215,6 +230,7 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 		lastName,
 		email,
 		phone,
+		isMinor,
 		guardianName,
 		guardianPhone,
 		status,
@@ -226,6 +242,7 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 		&updated.LastName,
 		&updated.Email,
 		&updated.Phone,
+		&updated.IsMinor,
 		&updated.GuardianName,
 		&updated.GuardianPhone,
 		&updated.Status,

@@ -4,14 +4,56 @@
  * - Date & Time parsing
  */
 
-export function formatCents(cents: number, currency: string = 'USD'): string {
-  const dollars = cents / 100;
+export function formatCents(cents: number, currency: string = 'EUR'): string {
+  const amount = cents / 100;
+  if (currency === 'EUR') {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(dollars);
+  }).format(amount);
+}
+
+export function formatEuros(cents: number): string {
+  const amount = cents / 100;
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+export function formatDateSpanish(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+export function formatReceiptNumber(rawNumber: string): string {
+  if (!rawNumber) return '2025-0001';
+  // If it contains "REC-YYYY-XXXX", strip "REC-"
+  if (rawNumber.startsWith('REC-')) {
+    return rawNumber.substring(4);
+  }
+  if (rawNumber.startsWith('inv-')) {
+    const year = new Date().getFullYear();
+    const num = rawNumber.replace(/\D/g, '').padStart(4, '0');
+    return `${year}-${num}`;
+  }
+  return rawNumber;
 }
 
 export function formatDate(dateString: string): string {

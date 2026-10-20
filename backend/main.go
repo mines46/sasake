@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -46,8 +48,23 @@ func main() {
 
 	// 3. Initialize Stores & Handlers
 	var studentStore store.StudentStore
+	var classStore store.ClassStore
+	var attendanceStore store.AttendanceStore
+	var invoiceStore store.InvoiceStore
+	var userStore store.UserStore
 	if pool != nil {
 		studentStore = store.NewStudentStore(pool)
+		classStore = store.NewClassStore(pool)
+		attendanceStore = store.NewAttendanceStore(pool)
+		invoiceStore = store.NewInvoiceStore(pool)
+		userStore = store.NewUserStore(pool)
+
+		// Seed initial admin and teacher credentials if not present
+		if err := userStore.SeedDefaultUsers(context.Background()); err != nil {
+			log.Printf("[WARNING] Could not seed default users: %v", err)
+		} else {
+			log.Println("[INFO] Default administrative and teacher accounts verified.")
+		}
 	}
 
 	// 4. Setup chi Router & Middlewares
@@ -60,10 +77,27 @@ func main() {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	// CORS configuration
+	allowedOrigins := []string{"http://localhost:*", "http://127.0.0.1:*"}
+	if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
+		for _, o := range strings.Split(envOrigins, ",") {
+			if trimmed := strings.TrimSpace(o); trimmed != "" {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
+		}
+	}
+
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:*", "http://127.0.0.1:*"},
+		AllowedOrigins: allowedOrigins,
+		AllowOriginFunc: func(r *http.Request, origin string) bool {
+			// If ALLOWED_ORIGINS is not explicitly configured, permit access from any origin
+			// (useful for local network/LAN academy deployments like 10.4.x.x or 192.168.x.x)
+			if os.Getenv("ALLOWED_ORIGINS") == "" {
+				return true
+			}
+			return false
+		},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-User-Role", "X-User-Id"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -80,6 +114,28 @@ func main() {
 	})
 
 	// Mount Subrouters
+	r.Route("/api/auth", func(sub chi.Router) {
+		if userStore != nil {
+			authHandler := handlers.NewAuthHandler(userStore)
+			authHandler.RegisterAuthRoutes(sub)
+		} else {
+			sub.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, `{"error":"database connection unavailable"}`, http.StatusServiceUnavailable)
+			})
+		}
+	})
+
+	r.Route("/api/users", func(sub chi.Router) {
+		if userStore != nil {
+			authHandler := handlers.NewAuthHandler(userStore)
+			authHandler.RegisterUserRoutes(sub)
+		} else {
+			sub.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, `{"error":"database connection unavailable"}`, http.StatusServiceUnavailable)
+			})
+		}
+	})
+
 	r.Route("/api/students", func(sub chi.Router) {
 		if studentStore != nil {
 			studentHandler := handlers.NewStudentHandler(studentStore)
@@ -91,7 +147,74 @@ func main() {
 		}
 	})
 
-	// 5. Start Server with Graceful Shutdown
+	r.Route("/api/classes", func(sub chi.Router) {
+		if classStore != nil {
+			classHandler := handlers.NewClassHandler(classStore)
+			classHandler.RegisterRoutes(sub)
+		} else {
+			sub.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, `{"error":"database connection unavailable"}`, http.StatusServiceUnavailable)
+			})
+		}
+	})
+
+	r.Route("/api/attendance", func(sub chi.Router) {
+		if attendanceStore != nil {
+			attendanceHandler := handlers.NewAttendanceHandler(attendanceStore)
+			attendanceHandler.RegisterRoutes(sub)
+		} else {
+			sub.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, `{"error":"database connection unavailable"}`, http.StatusServiceUnavailable)
+			})
+		}
+	})
+
+	r.Route("/api/invoices", func(sub chi.Router) {
+		if invoiceStore != nil {
+			invoiceHandler := handlers.NewInvoiceHandler(invoiceStore)
+			invoiceHandler.RegisterRoutes(sub)
+		} else {
+			sub.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, `{"error":"database connection unavailable"}`, http.StatusServiceUnavailable)
+			})
+		}
+	})
+
+	// 5. Serve Frontend Static Assets (Single-Port Unified Deployment)
+	distCandidates := []string{
+		"../frontend/dist",
+		"./frontend/dist",
+		"dist",
+	}
+	var distDir string
+	for _, candidate := range distCandidates {
+		if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {
+			distDir = candidate
+			break
+		}
+	}
+
+	if distDir != "" {
+		log.Printf("[INFO] Serving static frontend application from: %s", distDir)
+		fs := http.FileServer(http.Dir(distDir))
+		r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api") {
+				http.NotFound(w, r)
+				return
+			}
+			filePath := filepath.Join(distDir, filepath.Clean(r.URL.Path))
+			if stat, err := os.Stat(filePath); err == nil && !stat.IsDir() {
+				fs.ServeHTTP(w, r)
+				return
+			}
+			// SPA Client-Side Route Fallback
+			http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
+		})
+	} else {
+		log.Println("[INFO] Frontend dist directory not found. Serving API endpoints only.")
+	}
+
+	// 6. Start Server with Graceful Shutdown
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      r,

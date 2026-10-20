@@ -301,6 +301,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onClose={() => setIsNewInvoiceOpen(false)}
         onInvoiceCreated={onAddInvoice}
         classes={classes}
+        students={students}
       />
 
       {/* New Student Registration Modal */}

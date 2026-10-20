@@ -127,27 +127,38 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Emergency Guardian */}
+            {/* Emergency Guardian or Adult Status */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
-                Emergency Guardian Contact
+                {student.is_minor || student.guardian_name ? 'Tutor / Representante Legal' : 'Condición del Alumno'}
               </span>
-              <div className="space-y-1.5">
-                <p className="font-semibold text-slate-900">
-                  {student.guardian_name || <span className="text-slate-400 italic font-normal">No guardian listed</span>}
-                </p>
-                <p className="flex items-center gap-2 text-slate-700">
-                  <Phone className="w-4 h-4 text-slate-400" />
-                  {student.guardian_phone ? (
-                    <a href={`tel:${student.guardian_phone}`} className="hover:text-indigo-600">
-                      {student.guardian_phone}
-                    </a>
-                  ) : (
-                    <span className="text-slate-400 italic">No phone registered</span>
-                  )}
-                </p>
-              </div>
+              {student.is_minor || student.guardian_name ? (
+                <div className="space-y-1.5">
+                  <p className="font-semibold text-slate-900">
+                    {student.guardian_name}
+                  </p>
+                  <p className="flex items-center gap-2 text-slate-700">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    {student.guardian_phone ? (
+                      <a href={`tel:${student.guardian_phone}`} className="hover:text-indigo-600">
+                        {student.guardian_phone}
+                      </a>
+                    ) : (
+                      <span className="text-slate-400 italic">Sin teléfono registrado</span>
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Mayor de edad (+18)
+                  </span>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Alumno adulto con contacto directo. No requiere tutor ni representante legal.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

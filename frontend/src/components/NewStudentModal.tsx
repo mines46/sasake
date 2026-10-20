@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, UserPlus, Shield } from 'lucide-react';
+import { X, UserPlus, Shield, UserCheck, CheckCircle2 } from 'lucide-react';
 import type { Student, StudentStatus } from '../types';
 
 interface NewStudentModalProps {
@@ -24,6 +24,14 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
   const [lastName, setLastName] = useState(studentToEdit?.last_name || '');
   const [email, setEmail] = useState(studentToEdit?.email || '');
   const [phone, setPhone] = useState(studentToEdit?.phone || '');
+  
+  // Default to false (most students are adults over 18)
+  const [isMinor, setIsMinor] = useState<boolean>(
+    studentToEdit?.is_minor !== undefined
+      ? studentToEdit.is_minor
+      : Boolean(studentToEdit?.guardian_name && studentToEdit.guardian_name.trim() !== '')
+  );
+
   const [guardianName, setGuardianName] = useState(studentToEdit?.guardian_name || '');
   const [guardianPhone, setGuardianPhone] = useState(studentToEdit?.guardian_phone || '');
   const [status, setStatus] = useState<StudentStatus>(studentToEdit?.status || 'active');
@@ -31,14 +39,20 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isMinor && !guardianName.trim()) {
+      alert('Al marcar que el alumno requiere tutor legal o es menor de edad, es necesario ingresar el nombre del tutor.');
+      return;
+    }
+
     const studentData: Student = {
       id: studentToEdit ? studentToEdit.id : `std-${Date.now()}`,
       first_name: firstName.trim(),
       last_name: lastName.trim(),
       email: email.trim().toLowerCase(),
       phone: phone.trim() || undefined,
-      guardian_name: guardianName.trim() || undefined,
-      guardian_phone: guardianPhone.trim() || undefined,
+      is_minor: isMinor,
+      guardian_name: isMinor ? (guardianName.trim() || undefined) : undefined,
+      guardian_phone: isMinor ? (guardianPhone.trim() || undefined) : undefined,
       status,
       created_at: studentToEdit ? studentToEdit.created_at : new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -49,30 +63,31 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="p-5 space-y-4">
+      {/* Student Personal Info */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            First Name *
+            Nombre *
           </label>
           <input
             type="text"
             required
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            placeholder="e.g. Elena"
+            placeholder="ej. Elena"
             className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           />
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Last Name *
+            Apellidos *
           </label>
           <input
             type="text"
             required
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            placeholder="e.g. Rostova"
+            placeholder="ej. Rostova"
             className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           />
         </div>
@@ -81,26 +96,26 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Student Email *
+            Email del Alumno *
           </label>
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="elena@example.com"
+            placeholder="elena@encina.com"
             className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           />
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Student Phone
+            Teléfono del Alumno
           </label>
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1 (555) 234-8901"
+            placeholder="+34 611 234 567"
             className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           />
         </div>
@@ -108,67 +123,103 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
 
       <div>
         <label className="block text-xs font-semibold text-slate-700 mb-1">
-          Enrollment Status
+          Estado de Matrícula
         </label>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as StudentStatus)}
           className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
         >
-          <option value="active">Active (Enrolled & Attending)</option>
-          <option value="inactive">Inactive (Paused / On Leave)</option>
-          <option value="suspended">Suspended</option>
+          <option value="active">Activo (Matriculado y Asistiendo)</option>
+          <option value="inactive">Inactivo (En pausa / Baja)</option>
+          <option value="suspended">Suspendido</option>
         </select>
       </div>
 
-      {/* Guardian Information */}
+      {/* Minor / Requires Tutor Checkbox Selector */}
       <div className="pt-2 border-t border-slate-100">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
-          <Shield className="w-3.5 h-3.5 text-indigo-500" />
-          Emergency Guardian Info
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">
-              Guardian Name
-            </label>
+        <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 transition-colors">
+          <label className="flex items-start gap-3 cursor-pointer select-none">
             <input
-              type="text"
-              value={guardianName}
-              onChange={(e) => setGuardianName(e.target.value)}
-              placeholder="e.g. Mikhail Rostov"
-              className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              type="checkbox"
+              checked={isMinor}
+              onChange={(e) => setIsMinor(e.target.checked)}
+              className="w-4 h-4 mt-0.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
             />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">
-              Guardian Phone
-            </label>
-            <input
-              type="tel"
-              value={guardianPhone}
-              onChange={(e) => setGuardianPhone(e.target.value)}
-              placeholder="+1 (555) 234-8900"
-              className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-            />
-          </div>
+            <div className="text-xs">
+              <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-indigo-600" />
+                El alumno es menor de 18 años / Requiere tutor legal
+              </span>
+              <span className="text-slate-500 text-[11px] block mt-0.5 leading-relaxed">
+                {isMinor
+                  ? 'Se habilitan los campos para registrar los datos del padre, madre o tutor legal responsable.'
+                  : 'Desmarcado por defecto: la mayoría de alumnos son mayores de edad (+18 años) con contacto directo.'}
+              </span>
+            </div>
+          </label>
         </div>
       </div>
+
+      {/* Adult Note vs Guardian Information Section */}
+      {!isMinor ? (
+        <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/70 text-xs text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>
+            <strong>Alumno mayor de edad (+18 años):</strong> No requiere tutor legal. Toda la comunicación y los recibos se emiten a su nombre directamente.
+          </span>
+        </div>
+      ) : (
+        <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-3 animate-in fade-in duration-150">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-950">
+            <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Datos del Tutor o Representante Legal</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Nombre del Tutor / Padre / Madre *
+              </label>
+              <input
+                type="text"
+                required={isMinor}
+                value={guardianName}
+                onChange={(e) => setGuardianName(e.target.value)}
+                placeholder="ej. Mikhail Rostov"
+                className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Teléfono de Contacto del Tutor
+              </label>
+              <input
+                type="tel"
+                value={guardianPhone}
+                onChange={(e) => setGuardianPhone(e.target.value)}
+                placeholder="+34 611 234 500"
+                className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Form Actions */}
       <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
         <button
           type="button"
           onClick={onClose}
-          className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
         >
-          Cancel
+          Cancelar
         </button>
         <button
           type="submit"
-          className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all"
+          className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all cursor-pointer"
         >
-          {studentToEdit ? 'Save Changes' : 'Register Student'}
+          {studentToEdit ? 'Guardar Cambios' : 'Registrar Alumno'}
         </button>
       </div>
     </form>
@@ -197,22 +248,22 @@ export const NewStudentModal: React.FC<NewStudentModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                {studentToEdit ? 'Edit Student Profile' : 'Register New Student'}
+                {studentToEdit ? 'Editar Ficha de Alumno' : 'Registrar Nuevo Alumno'}
               </h3>
               <p className="text-xs text-slate-500">
-                {studentToEdit ? 'Update student information & guardian emergency contact' : 'Add student record and guardian emergency contact'}
+                {studentToEdit ? 'Actualizar información del alumno y tutor legal' : 'Ficha de contacto del alumno y tutor (si es menor)'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Inner Form keyed to student ID or 'new' to prevent effect cascading renders */}
+        {/* Inner Form */}
         <StudentFormInner
           key={studentToEdit ? studentToEdit.id : 'new'}
           studentToEdit={studentToEdit}

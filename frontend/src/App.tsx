@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { LoginPage } from './components/LoginPage';
+import { AdminUsersPage } from './pages/AdminUsersPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { BillingPage } from './pages/BillingPage';
 import { StudentsPage } from './pages/StudentsPage';
+import { ClassesPage } from './pages/ClassesPage';
 import { 
-  BookOpen, 
   CalendarDays, 
   Settings, 
   ArrowLeft 
@@ -15,15 +17,31 @@ import {
   mockStudents, 
   mockClasses,
   mockEnrollments,
-  mockAttendanceHistory
+  mockAttendanceHistory,
+  mockClassSchedules
 } from './data/mockData';
 import type { 
   EnrichedInvoice, 
   Student, 
-  ClassItem 
+  ClassItem,
+  User 
 } from './types';
+import { invoiceApi } from './api/invoices';
+
+const getInitialUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem('sasake_auth_user');
+    if (raw) {
+      return JSON.parse(raw) as User;
+    }
+  } catch {
+    // ignore parse error
+  }
+  return null;
+};
 
 function App() {
+  const [currentUser, setCurrentUser] = useState<User | null>(getInitialUser);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,18 +49,39 @@ function App() {
   // App-level shared states
   const [invoices, setInvoices] = useState<EnrichedInvoice[]>(mockRecentInvoices);
   const [students, setStudents] = useState<Student[]>(mockStudents);
-  const [classes] = useState<ClassItem[]>(mockClasses);
+  const [classes, setClasses] = useState<ClassItem[]>(mockClasses);
 
   // Quick action modal triggers
   const [isNewStudentOpen, setIsNewStudentOpen] = useState(false);
   const [isNewInvoiceOpen, setIsNewInvoiceOpen] = useState(false);
+
+  // Auth handlers
+  const handleLoginSuccess = (user: User, token: string) => {
+    localStorage.setItem('sasake_auth_user', JSON.stringify(user));
+    localStorage.setItem('sasake_auth_token', token);
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('sasake_auth_user');
+    localStorage.removeItem('sasake_auth_token');
+    setCurrentUser(null);
+  };
 
   // Handlers for state modifications
   const handleAddInvoice = (newInvoice: EnrichedInvoice) => {
     setInvoices((prev) => [newInvoice, ...prev]);
   };
 
+  const handleAddInvoices = (newInvoices: EnrichedInvoice[]) => {
+    setInvoices((prev) => [...newInvoices, ...prev]);
+  };
+
   const handleMarkInvoicePaid = (id: string) => {
+    invoiceApi.updateStatus(id, 'paid').catch(() => {
+      // Offline fallback
+    });
+
     setInvoices((prev) =>
       prev.map((inv) => {
         if (inv.id === id) {
@@ -67,13 +106,18 @@ function App() {
     );
   };
 
+  const handleAddClass = (newClass: ClassItem) => {
+    setClasses((prev) => [newClass, ...prev]);
+  };
+
+  const handleUpdateClass = (updatedClass: ClassItem) => {
+    setClasses((prev) =>
+      prev.map((c) => (c.id === updatedClass.id ? updatedClass : c))
+    );
+  };
+
   // Tab details for remaining secondary modules
   const tabDetails: Record<string, { title: string; desc: string; icon: any }> = {
-    classes: {
-      title: 'Classes & Courses',
-      desc: 'Define course curricula, classroom assignments, instructors, and cost per session rates.',
-      icon: BookOpen,
-    },
     schedule: {
       title: 'Timetable & Class Schedules',
       desc: 'Weekly recurring slot distribution, room allocations, and instructor schedules.',
@@ -86,6 +130,17 @@ function App() {
     },
   };
 
+  // 1. If unauthenticated, show the Login page
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // 2. Role Admin: ONLY allowed to view, add, and manage users
+  if (currentUser.role === 'admin') {
+    return <AdminUsersPage currentUser={currentUser} onLogout={handleLogout} />;
+  }
+
+  // 3. Role Teacher: Full access to the whole academy application
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Navigation Sidebar */}
@@ -94,6 +149,8 @@ function App() {
         onClose={() => setSidebarOpen(false)}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -105,6 +162,8 @@ function App() {
           onOpenNewInvoice={() => setIsNewInvoiceOpen(true)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          currentUser={currentUser}
+          onLogout={handleLogout}
         />
 
         {/* Page Content */}
@@ -134,14 +193,30 @@ function App() {
               enrollments={mockEnrollments}
               attendanceHistory={mockAttendanceHistory}
               onNavigateToBilling={() => setActiveTab('invoices')}
+              onBatchGenerated={handleAddInvoices}
             />
           ) : activeTab === 'invoices' ? (
             /* Priority Billing & Invoicing Module */
             <BillingPage
               invoices={invoices}
               onAddInvoice={handleAddInvoice}
+              onAddInvoices={handleAddInvoices}
               onMarkInvoicePaid={handleMarkInvoicePaid}
               classes={classes}
+              students={students}
+              enrollments={mockEnrollments}
+              schedules={mockClassSchedules}
+              attendanceHistory={mockAttendanceHistory}
+            />
+          ) : activeTab === 'classes' ? (
+            /* Classes & Curriculum Management Module */
+            <ClassesPage
+              classes={classes}
+              onAddClass={handleAddClass}
+              onUpdateClass={handleUpdateClass}
+              enrollments={mockEnrollments}
+              students={students}
+              schedules={mockClassSchedules}
             />
           ) : (
             /* Subpage placeholder for remaining modules */
