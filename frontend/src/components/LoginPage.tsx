@@ -6,10 +6,7 @@ import {
   Eye, 
   EyeOff, 
   LogIn, 
-  ShieldCheck, 
-  AlertCircle, 
-  Sparkles, 
-  BookOpen 
+  AlertCircle 
 } from 'lucide-react';
 import type { User as UserType } from '../types';
 import { authApi } from '../api/auth';
@@ -45,17 +42,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       setError(err.message || 'Error al iniciar sesión. Compruebe sus credenciales.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFillDemo = (demoRole: 'admin' | 'teacher') => {
-    setError(null);
-    if (demoRole === 'admin') {
-      setUsername('admin');
-      setPassword('admin123');
-    } else {
-      setUsername('profesor');
-      setPassword('profesor123');
     }
   };
 
@@ -106,7 +92,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin o profesor"
+                placeholder="Introduzca su usuario"
                 className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
                 autoComplete="username"
               />
@@ -161,50 +147,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        {/* Quick Demo Login selector */}
-        <div className="mt-8 pt-6 border-t border-slate-100">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
-            <span className="flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-500" /> Cuentas Demo Rápidas
-            </span>
-            <span>2 Roles</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {/* Admin Demo Button */}
-            <button
-              type="button"
-              onClick={() => handleFillDemo('admin')}
-              className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/70 text-left transition-all group"
-            >
-              <div className="flex items-center gap-1.5 text-amber-900 font-semibold text-xs group-hover:text-amber-950">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                <span>Admin</span>
-              </div>
-              <p className="text-[10px] text-amber-700/80 mt-0.5 leading-tight truncate">
-                Solo crear usuarios
-              </p>
-            </button>
-
-            {/* Teacher Demo Button */}
-            <button
-              type="button"
-              onClick={() => handleFillDemo('teacher')}
-              className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/70 text-left transition-all group"
-            >
-              <div className="flex items-center gap-1.5 text-indigo-900 font-semibold text-xs group-hover:text-indigo-950">
-                <BookOpen className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
-                <span>Profesor</span>
-              </div>
-              <p className="text-[10px] text-indigo-700/80 mt-0.5 leading-tight truncate">
-                Toda la aplicación
-              </p>
-            </button>
-          </div>
-        </div>
-
-        {/* Roles explanation footer */}
-        <div className="mt-6 text-center text-xs text-slate-400">
+        {/* System identification footer */}
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
           <span className="font-semibold text-slate-600">SasaKe v2.0</span> • Centro de Estudios Encina
         </div>
       </div>
