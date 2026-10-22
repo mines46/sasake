@@ -15,7 +15,7 @@ ENV VITE_API_URL=/api
 RUN npm run build
 
 # -------------------------------------------------------------
-# Stage 2: Build Backend (Go 1.25)
+# Stage 2: Build Backend (Go 1.24)
 # -------------------------------------------------------------
 FROM golang:1.24-alpine AS backend-builder
 WORKDIR /app/backend
