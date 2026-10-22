@@ -33,6 +33,15 @@ export interface CreateUserPayload {
   role: UserRole;
 }
 
+export interface UpdateUserPayload {
+  email?: string;
+  username?: string;
+  password?: string;
+  full_name?: string;
+  role?: UserRole;
+  is_active?: boolean;
+}
+
 export interface AuthResponse {
   user: User;
   token: string;

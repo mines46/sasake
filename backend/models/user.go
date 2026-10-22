@@ -35,6 +35,15 @@ type CreateUserInput struct {
 	Role     UserRole `json:"role"`
 }
 
+type UpdateUserInput struct {
+	Email    *string   `json:"email,omitempty"`
+	Username *string   `json:"username,omitempty"`
+	Password *string   `json:"password,omitempty"`
+	FullName *string   `json:"full_name,omitempty"`
+	Role     *UserRole `json:"role,omitempty"`
+	IsActive *bool     `json:"is_active,omitempty"`
+}
+
 type AuthResponse struct {
 	User  User   `json:"user"`
 	Token string `json:"token"`

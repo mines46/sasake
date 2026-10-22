@@ -126,6 +126,52 @@ func (m *mockUserStore) Create(ctx context.Context, input models.CreateUserInput
 	return &u, nil
 }
 
+func (m *mockUserStore) Update(ctx context.Context, id string, input models.UpdateUserInput) (*models.User, error) {
+	u, ok := m.users[id]
+	if !ok {
+		return nil, store.ErrNotFound
+	}
+
+	if input.Email != nil && *input.Email != u.Email {
+		for otherID, other := range m.users {
+			if otherID != id && other.Email == *input.Email {
+				return nil, store.ErrConflictEmail
+			}
+		}
+		u.Email = *input.Email
+	}
+
+	if input.Username != nil && *input.Username != u.Username {
+		for otherID, other := range m.users {
+			if otherID != id && other.Username == *input.Username {
+				return nil, store.ErrConflictUsername
+			}
+		}
+		u.Username = *input.Username
+	}
+
+	if input.FullName != nil {
+		u.FullName = *input.FullName
+	}
+
+	if input.Role != nil {
+		u.Role = *input.Role
+	}
+
+	if input.IsActive != nil {
+		u.IsActive = *input.IsActive
+	}
+
+	if input.Password != nil && *input.Password != "" {
+		hash, _ := utils.HashPassword(*input.Password)
+		u.PasswordHash = hash
+	}
+
+	u.UpdatedAt = time.Now()
+	m.users[id] = u
+	return &u, nil
+}
+
 func (m *mockUserStore) Delete(ctx context.Context, id string) error {
 	if _, ok := m.users[id]; !ok {
 		return store.ErrNotFound
@@ -291,6 +337,87 @@ func TestAuthHandler_RBAC_UserManagement(t *testing.T) {
 
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected 204 No Content, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAuthHandler_RBAC_UpdateUser(t *testing.T) {
+	mockStore := newMockUserStore()
+	handler := NewAuthHandler(mockStore)
+
+	r := chi.NewRouter()
+	r.Route("/api/users", func(sub chi.Router) {
+		handler.RegisterUserRoutes(sub)
+	})
+
+	// 1. Non-admin cannot update user
+	updateBody, _ := json.Marshal(models.UpdateUserInput{
+		FullName: func() *string { s := "New Name"; return &s }(),
+	})
+	req := httptest.NewRequest(http.MethodPut, "/api/users/usr-teacher", bytes.NewReader(updateBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-Role", "teacher")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for non-admin, got %d", rec.Code)
+	}
+
+	// 2. Admin can update own admin account (full name, email, new password)
+	newAdminName := "Super Admin Updated"
+	newAdminPass := "newadminpass123"
+	adminUpdateBody, _ := json.Marshal(models.UpdateUserInput{
+		FullName: &newAdminName,
+		Password: &newAdminPass,
+	})
+	req = httptest.NewRequest(http.MethodPut, "/api/users/usr-admin", bytes.NewReader(adminUpdateBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-Role", "admin")
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var updatedAdmin models.User
+	if err := json.Unmarshal(rec.Body.Bytes(), &updatedAdmin); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if updatedAdmin.FullName != newAdminName {
+		t.Fatalf("expected full_name %q, got %q", newAdminName, updatedAdmin.FullName)
+	}
+
+	// Verify updated password works for login
+	authRes, err := mockStore.Authenticate(context.Background(), "admin", newAdminPass)
+	if err != nil || authRes == nil {
+		t.Fatalf("failed to authenticate with newly updated password: %v", err)
+	}
+
+	// 3. Password shorter than 6 characters fails with 400
+	shortPass := "123"
+	badUpdateBody, _ := json.Marshal(models.UpdateUserInput{
+		Password: &shortPass,
+	})
+	req = httptest.NewRequest(http.MethodPut, "/api/users/usr-admin", bytes.NewReader(badUpdateBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-Role", "admin")
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for short password, got %d", rec.Code)
+	}
+
+	// 4. Update non-existent user returns 404
+	req = httptest.NewRequest(http.MethodPut, "/api/users/usr-nonexistent", bytes.NewReader(updateBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-Role", "admin")
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 Not Found, got %d", rec.Code)
 	}
 }
 

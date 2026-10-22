@@ -31,6 +31,7 @@ func (h *AuthHandler) RegisterAuthRoutes(r chi.Router) {
 func (h *AuthHandler) RegisterUserRoutes(r chi.Router) {
 	r.Get("/", h.ListUsers)
 	r.Post("/", h.CreateUser)
+	r.Put("/{id}", h.UpdateUser)
 	r.Delete("/{id}", h.DeleteUser)
 }
 
@@ -172,6 +173,53 @@ func (h *AuthHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, user)
+}
+
+// UpdateUser updates an existing user by ID (Admin only)
+func (h *AuthHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	if !checkAdminRole(r) {
+		writeJSONError(w, http.StatusForbidden, "Acceso restringido: Solo el rol Administrador puede modificar usuarios")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeJSONError(w, http.StatusBadRequest, "User ID is required")
+		return
+	}
+
+	var input models.UpdateUserInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	if input.Password != nil && strings.TrimSpace(*input.Password) != "" {
+		if len(strings.TrimSpace(*input.Password)) < 6 {
+			writeJSONError(w, http.StatusBadRequest, "La nueva contraseña debe tener al menos 6 caracteres")
+			return
+		}
+	}
+
+	user, err := h.userStore.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeJSONError(w, http.StatusNotFound, "User not found")
+			return
+		}
+		if errors.Is(err, store.ErrConflictEmail) {
+			writeJSONError(w, http.StatusConflict, "Ya existe un usuario con este correo electrónico")
+			return
+		}
+		if errors.Is(err, store.ErrConflictUsername) {
+			writeJSONError(w, http.StatusConflict, "Ya existe un usuario con este nombre de usuario")
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "Error al actualizar usuario: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
 }
 
 // DeleteUser deletes an existing user by ID (Admin only)

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { User, LoginCredentials, CreateUserPayload, AuthResponse } from '../types';
+import type { User, LoginCredentials, CreateUserPayload, UpdateUserPayload, AuthResponse } from '../types';
 import { mockUsers } from '../data/mockData';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
@@ -155,6 +155,42 @@ export const authApi = {
       const updated = [newUser, ...users];
       saveLocalMockUsers(updated);
       return newUser;
+    }
+  },
+
+  async updateUser(id: string, payload: UpdateUserPayload): Promise<User> {
+    try {
+      const res = await api.put<User>(`/users/${id}`, payload);
+      return res.data;
+    } catch (err: any) {
+      if (err.response && err.response.data?.error) {
+        throw new Error(err.response.data.error);
+      }
+      // Offline fallback
+      const users = getLocalMockUsers();
+      const idx = users.findIndex((u) => u.id === id);
+      if (idx === -1) {
+        throw new Error('Usuario no encontrado');
+      }
+      if (payload.email && users.some((u) => u.id !== id && u.email.toLowerCase() === payload.email!.toLowerCase())) {
+        throw new Error('Ya existe un usuario con este correo electrónico');
+      }
+      if (payload.username && users.some((u) => u.id !== id && u.username.toLowerCase() === payload.username!.toLowerCase())) {
+        throw new Error('Ya existe un usuario con este nombre de usuario');
+      }
+      const existing = users[idx];
+      const updatedUser: User = {
+        ...existing,
+        email: payload.email ?? existing.email,
+        username: payload.username ?? existing.username,
+        full_name: payload.full_name ?? existing.full_name,
+        role: payload.role ?? existing.role,
+        is_active: payload.is_active ?? existing.is_active,
+        updated_at: new Date().toISOString(),
+      };
+      users[idx] = updatedUser;
+      saveLocalMockUsers(users);
+      return updatedUser;
     }
   },
 

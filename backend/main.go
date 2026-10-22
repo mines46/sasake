@@ -53,17 +53,42 @@ func main() {
 	var invoiceStore store.InvoiceStore
 	var userStore store.UserStore
 	if pool != nil {
+		// Auto-apply schema definitions if database is fresh or empty
+		schemaPaths := []string{
+			"database/schema.sql",
+			"../database/schema.sql",
+			"../../database/schema.sql",
+		}
+		for _, sp := range schemaPaths {
+			if data, err := os.ReadFile(sp); err == nil {
+				log.Printf("[INFO] Ensuring database schema from %s", sp)
+				initCtx, initCancel := context.WithTimeout(context.Background(), 15*time.Second)
+				if _, err := pool.Exec(initCtx, string(data)); err != nil {
+					log.Printf("[WARNING] Could not apply schema definitions: %v", err)
+				} else {
+					log.Println("[SUCCESS] Database schema verified and active.")
+				}
+				initCancel()
+				break
+			}
+		}
+
 		studentStore = store.NewStudentStore(pool)
 		classStore = store.NewClassStore(pool)
 		attendanceStore = store.NewAttendanceStore(pool)
 		invoiceStore = store.NewInvoiceStore(pool)
 		userStore = store.NewUserStore(pool)
 
-		// Seed initial admin and teacher credentials if not present
+		// Seed initial admin credentials if not present
 		if err := userStore.SeedDefaultUsers(context.Background()); err != nil {
 			log.Printf("[WARNING] Could not seed default users: %v", err)
 		} else {
-			log.Println("[INFO] Default administrative and teacher accounts verified.")
+			log.Println("[INFO] Default administrative account verified.")
+		}
+
+		// Auto-seed development mock data if in development and database is empty
+		if err := database.CheckAndSeedDevelopmentData(context.Background(), pool); err != nil {
+			log.Printf("[WARNING] Could not auto-seed development data: %v", err)
 		}
 	}
 

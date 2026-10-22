@@ -68,6 +68,15 @@ function App() {
     setCurrentUser(null);
   };
 
+  const handleUpdateCurrentUser = (updated: User) => {
+    setCurrentUser(updated);
+    try {
+      localStorage.setItem('sasake_auth_user', JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+  };
+
   // Handlers for state modifications
   const handleAddInvoice = (newInvoice: EnrichedInvoice) => {
     setInvoices((prev) => [newInvoice, ...prev]);
@@ -137,7 +146,13 @@ function App() {
 
   // 2. Role Admin: ONLY allowed to view, add, and manage users
   if (currentUser.role === 'admin') {
-    return <AdminUsersPage currentUser={currentUser} onLogout={handleLogout} />;
+    return (
+      <AdminUsersPage 
+        currentUser={currentUser} 
+        onLogout={handleLogout} 
+        onUpdateCurrentUser={handleUpdateCurrentUser} 
+      />
+    );
   }
 
   // 3. Role Teacher: Full access to the whole academy application

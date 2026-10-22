@@ -23,6 +23,7 @@ type UserStore interface {
 	GetAll(ctx context.Context) ([]models.User, error)
 	GetByID(ctx context.Context, id string) (*models.User, error)
 	Create(ctx context.Context, input models.CreateUserInput) (*models.User, error)
+	Update(ctx context.Context, id string, input models.UpdateUserInput) (*models.User, error)
 	Delete(ctx context.Context, id string) error
 	SeedDefaultUsers(ctx context.Context) error
 }
@@ -190,6 +191,93 @@ func (s *PostgresUserStore) Create(ctx context.Context, input models.CreateUserI
 	return &u, nil
 }
 
+func (s *PostgresUserStore) Update(ctx context.Context, id string, input models.UpdateUserInput) (*models.User, error) {
+	// 1. Fetch current user
+	currentUser, err := s.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	email := currentUser.Email
+	if input.Email != nil && strings.TrimSpace(*input.Email) != "" {
+		email = strings.TrimSpace(strings.ToLower(*input.Email))
+	}
+
+	username := currentUser.Username
+	if input.Username != nil && strings.TrimSpace(*input.Username) != "" {
+		username = strings.TrimSpace(strings.ToLower(*input.Username))
+	}
+
+	fullName := currentUser.FullName
+	if input.FullName != nil {
+		fullName = strings.TrimSpace(*input.FullName)
+	}
+
+	role := currentUser.Role
+	if input.Role != nil && (*input.Role == models.RoleAdmin || *input.Role == models.RoleTeacher) {
+		role = *input.Role
+	}
+
+	isActive := currentUser.IsActive
+	if input.IsActive != nil {
+		isActive = *input.IsActive
+	}
+
+	var passwordHash string
+	if input.Password != nil && strings.TrimSpace(*input.Password) != "" {
+		hash, err := utils.HashPassword(*input.Password)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash new password: %w", err)
+		}
+		passwordHash = hash
+	}
+
+	var query string
+	var queryArgs []interface{}
+
+	if passwordHash != "" {
+		query = `
+			UPDATE users
+			SET email = $1, username = $2, password_hash = $3, full_name = $4, role = $5, is_active = $6, updated_at = NOW()
+			WHERE id = $7
+			RETURNING id, email, username, full_name, role, is_active, created_at, updated_at
+		`
+		queryArgs = []interface{}{email, username, passwordHash, fullName, role, isActive, id}
+	} else {
+		query = `
+			UPDATE users
+			SET email = $1, username = $2, full_name = $3, role = $4, is_active = $5, updated_at = NOW()
+			WHERE id = $6
+			RETURNING id, email, username, full_name, role, is_active, created_at, updated_at
+		`
+		queryArgs = []interface{}{email, username, fullName, role, isActive, id}
+	}
+
+	var updated models.User
+	err = s.pool.QueryRow(ctx, query, queryArgs...).Scan(
+		&updated.ID,
+		&updated.Email,
+		&updated.Username,
+		&updated.FullName,
+		&updated.Role,
+		&updated.IsActive,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "users_email_key") || (strings.Contains(errMsg, "unique constraint") && strings.Contains(errMsg, "email")) {
+			return nil, ErrConflictEmail
+		}
+		if strings.Contains(errMsg, "users_username_key") || (strings.Contains(errMsg, "unique constraint") && strings.Contains(errMsg, "username")) {
+			return nil, ErrConflictUsername
+		}
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return &updated, nil
+}
+
 func (s *PostgresUserStore) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM users WHERE id = $1`
 	tag, err := s.pool.Exec(ctx, query, id)
@@ -203,6 +291,7 @@ func (s *PostgresUserStore) Delete(ctx context.Context, id string) error {
 }
 
 func (s *PostgresUserStore) SeedDefaultUsers(ctx context.Context) error {
+	// Seed only the initial administrator if no admin exists yet
 	seeds := []struct {
 		email    string
 		username string
@@ -216,13 +305,6 @@ func (s *PostgresUserStore) SeedDefaultUsers(ctx context.Context) error {
 			password: "admin123",
 			fullName: "Administrador Encina",
 			role:     models.RoleAdmin,
-		},
-		{
-			email:    "profesor@encina.com",
-			username: "profesor",
-			password: "profesor123",
-			fullName: "Profesor Encina",
-			role:     models.RoleTeacher,
 		},
 	}
 
