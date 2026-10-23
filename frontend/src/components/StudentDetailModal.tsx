@@ -6,7 +6,9 @@ import {
   BookOpen, 
   Calendar, 
   Receipt, 
-  Edit3
+  Edit3,
+  GraduationCap,
+  School
 } from 'lucide-react';
 import type { Student, ClassItem, Enrollment, Attendance } from '../types';
 import { formatDate } from '../utils/formatters';
@@ -160,6 +162,32 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 </div>
               )}
             </div>
+            {/* Academic Information: Course & School */}
+            {(student.course_year || student.school_name) && (
+              <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-2 col-span-1 sm:col-span-2">
+                <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-indigo-600" />
+                  Nivel Académico y Centro Educativo
+                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  {student.course_year && (
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-indigo-200/80 shadow-2xs">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Curso / Año</span>
+                      <span className="text-xs sm:text-sm font-bold text-indigo-950">{student.course_year}</span>
+                    </div>
+                  )}
+                  {student.school_name && (
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-indigo-200/80 shadow-2xs">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Centro / Instituto</span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1">
+                        <School className="w-3.5 h-3.5 text-indigo-500" />
+                        {student.school_name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Attendance Snapshot */}

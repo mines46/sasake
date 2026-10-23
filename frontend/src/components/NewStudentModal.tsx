@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, UserPlus, Shield, UserCheck, CheckCircle2 } from 'lucide-react';
+import { X, UserPlus, Shield, UserCheck, CheckCircle2, GraduationCap, School } from 'lucide-react';
 import type { Student, StudentStatus } from '../types';
 
 interface NewStudentModalProps {
@@ -24,6 +24,8 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
   const [lastName, setLastName] = useState(studentToEdit?.last_name || '');
   const [email, setEmail] = useState(studentToEdit?.email || '');
   const [phone, setPhone] = useState(studentToEdit?.phone || '');
+  const [courseYear, setCourseYear] = useState(studentToEdit?.course_year || '');
+  const [schoolName, setSchoolName] = useState(studentToEdit?.school_name || '');
   
   // Default to false (most students are adults over 18)
   const [isMinor, setIsMinor] = useState<boolean>(
@@ -53,6 +55,8 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
       is_minor: isMinor,
       guardian_name: isMinor ? (guardianName.trim() || undefined) : undefined,
       guardian_phone: isMinor ? (guardianPhone.trim() || undefined) : undefined,
+      course_year: courseYear.trim() || undefined,
+      school_name: schoolName.trim() || undefined,
       status,
       created_at: studentToEdit ? studentToEdit.created_at : new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -116,6 +120,36 @@ const StudentFormInner: React.FC<FormInnerProps> = ({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+34 611 234 567"
+            className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+          />
+        </div>
+      </div>
+
+      {/* Academic Background / Course & School */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+            <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+            Curso y Año Académico
+          </label>
+          <input
+            type="text"
+            value={courseYear}
+            onChange={(e) => setCourseYear(e.target.value)}
+            placeholder="ej. 2º Bachillerato, 4º ESO..."
+            className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+            <School className="w-3.5 h-3.5 text-indigo-600" />
+            Centro Educativo / Instituto
+          </label>
+          <input
+            type="text"
+            value={schoolName}
+            onChange={(e) => setSchoolName(e.target.value)}
+            placeholder="ej. IES Virgen Blanca"
             className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           />
         </div>

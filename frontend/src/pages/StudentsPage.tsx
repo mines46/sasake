@@ -12,7 +12,8 @@ import {
   UserCheck,
   CheckSquare,
   Square,
-  Layers
+  Layers,
+  GraduationCap
 } from 'lucide-react';
 import type { Student, ClassItem, Enrollment, Attendance, StudentStatus, EnrichedInvoice } from '../types';
 import { formatDate } from '../utils/formatters';
@@ -93,7 +94,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
         s.last_name.toLowerCase().includes(q) ||
         s.email.toLowerCase().includes(q) ||
         (s.phone && s.phone.includes(q)) ||
-        (s.guardian_name && s.guardian_name.toLowerCase().includes(q))
+        (s.guardian_name && s.guardian_name.toLowerCase().includes(q)) ||
+        (s.course_year && s.course_year.toLowerCase().includes(q)) ||
+        (s.school_name && s.school_name.toLowerCase().includes(q))
       );
     });
   }, [students, statusFilter, searchQuery]);
@@ -391,6 +394,16 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                             <div className="font-bold text-slate-900 text-xs sm:text-sm">
                               {student.first_name} {student.last_name}
                             </div>
+                            {(student.course_year || student.school_name) && (
+                              <div className="text-indigo-600 font-medium text-[11px] flex items-center gap-1 mt-0.5">
+                                <GraduationCap className="w-3 h-3 text-indigo-500 shrink-0" />
+                                <span className="truncate max-w-[200px]">
+                                  {student.course_year}
+                                  {student.course_year && student.school_name ? ' • ' : ''}
+                                  {student.school_name}
+                                </span>
+                              </div>
+                            )}
                             <div className="text-slate-400 text-[11px]">
                               Joined {formatDate(student.created_at)}
                             </div>

@@ -157,6 +157,8 @@ function App() {
         is_minor: newStudent.is_minor,
         guardian_name: newStudent.guardian_name,
         guardian_phone: newStudent.guardian_phone,
+        course_year: newStudent.course_year,
+        school_name: newStudent.school_name,
         status: newStudent.status,
       });
       setStudents((prev) => [created, ...prev.filter((s) => s.id !== created.id)]);
@@ -176,6 +178,8 @@ function App() {
         is_minor: updatedStudent.is_minor,
         guardian_name: updatedStudent.guardian_name,
         guardian_phone: updatedStudent.guardian_phone,
+        course_year: updatedStudent.course_year,
+        school_name: updatedStudent.school_name,
         status: updatedStudent.status,
       });
       setStudents((prev) =>

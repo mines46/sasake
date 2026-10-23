@@ -35,7 +35,7 @@ func NewStudentStore(pool *pgxpool.Pool) *PostgresStudentStore {
 
 func (s *PostgresStudentStore) GetAll(ctx context.Context, status string, search string) ([]models.Student, error) {
 	query := `
-		SELECT id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, course_year, school_name, status, created_at, updated_at
 		FROM students
 		WHERE 1=1
 	`
@@ -50,7 +50,7 @@ func (s *PostgresStudentStore) GetAll(ctx context.Context, status string, search
 
 	if search != "" {
 		searchTerm := "%" + strings.ToLower(search) + "%"
-		query += fmt.Sprintf(" AND (LOWER(first_name) LIKE $%d OR LOWER(last_name) LIKE $%d OR LOWER(email) LIKE $%d OR LOWER(COALESCE(guardian_name, '')) LIKE $%d)", argIdx, argIdx, argIdx, argIdx)
+		query += fmt.Sprintf(" AND (LOWER(first_name) LIKE $%d OR LOWER(last_name) LIKE $%d OR LOWER(email) LIKE $%d OR LOWER(COALESCE(guardian_name, '')) LIKE $%d OR LOWER(COALESCE(course_year, '')) LIKE $%d OR LOWER(COALESCE(school_name, '')) LIKE $%d)", argIdx, argIdx, argIdx, argIdx, argIdx, argIdx)
 		args = append(args, searchTerm)
 		argIdx++
 	}
@@ -75,6 +75,8 @@ func (s *PostgresStudentStore) GetAll(ctx context.Context, status string, search
 			&st.IsMinor,
 			&st.GuardianName,
 			&st.GuardianPhone,
+			&st.CourseYear,
+			&st.SchoolName,
 			&st.Status,
 			&st.CreatedAt,
 			&st.UpdatedAt,
@@ -93,7 +95,7 @@ func (s *PostgresStudentStore) GetAll(ctx context.Context, status string, search
 
 func (s *PostgresStudentStore) GetByID(ctx context.Context, id string) (*models.Student, error) {
 	query := `
-		SELECT id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, course_year, school_name, status, created_at, updated_at
 		FROM students
 		WHERE id = $1
 	`
@@ -107,6 +109,8 @@ func (s *PostgresStudentStore) GetByID(ctx context.Context, id string) (*models.
 		&st.IsMinor,
 		&st.GuardianName,
 		&st.GuardianPhone,
+		&st.CourseYear,
+		&st.SchoolName,
 		&st.Status,
 		&st.CreatedAt,
 		&st.UpdatedAt,
@@ -135,9 +139,9 @@ func (s *PostgresStudentStore) Create(ctx context.Context, input models.CreateSt
 	}
 
 	query := `
-		INSERT INTO students (first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
+		INSERT INTO students (first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, course_year, school_name, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, course_year, school_name, status, created_at, updated_at
 	`
 
 	var st models.Student
@@ -151,6 +155,8 @@ func (s *PostgresStudentStore) Create(ctx context.Context, input models.CreateSt
 		isMinor,
 		input.GuardianName,
 		input.GuardianPhone,
+		input.CourseYear,
+		input.SchoolName,
 		status,
 	).Scan(
 		&st.ID,
@@ -161,6 +167,8 @@ func (s *PostgresStudentStore) Create(ctx context.Context, input models.CreateSt
 		&st.IsMinor,
 		&st.GuardianName,
 		&st.GuardianPhone,
+		&st.CourseYear,
+		&st.SchoolName,
 		&st.Status,
 		&st.CreatedAt,
 		&st.UpdatedAt,
@@ -210,6 +218,14 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 	if input.GuardianPhone != nil {
 		guardianPhone = input.GuardianPhone
 	}
+	courseYear := current.CourseYear
+	if input.CourseYear != nil {
+		courseYear = input.CourseYear
+	}
+	schoolName := current.SchoolName
+	if input.SchoolName != nil {
+		schoolName = input.SchoolName
+	}
 	status := current.Status
 	if input.Status != nil {
 		status = *input.Status
@@ -217,9 +233,9 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 
 	query := `
 		UPDATE students
-		SET first_name = $1, last_name = $2, email = $3, phone = $4, is_minor = $5, guardian_name = $6, guardian_phone = $7, status = $8, updated_at = $9
-		WHERE id = $10
-		RETURNING id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at
+		SET first_name = $1, last_name = $2, email = $3, phone = $4, is_minor = $5, guardian_name = $6, guardian_phone = $7, course_year = $8, school_name = $9, status = $10, updated_at = $11
+		WHERE id = $12
+		RETURNING id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, course_year, school_name, status, created_at, updated_at
 	`
 
 	var updated models.Student
@@ -233,6 +249,8 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 		isMinor,
 		guardianName,
 		guardianPhone,
+		courseYear,
+		schoolName,
 		status,
 		time.Now(),
 		id,
@@ -245,6 +263,8 @@ func (s *PostgresStudentStore) Update(ctx context.Context, id string, input mode
 		&updated.IsMinor,
 		&updated.GuardianName,
 		&updated.GuardianPhone,
+		&updated.CourseYear,
+		&updated.SchoolName,
 		&updated.Status,
 		&updated.CreatedAt,
 		&updated.UpdatedAt,

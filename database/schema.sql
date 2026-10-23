@@ -11,12 +11,16 @@ CREATE TABLE IF NOT EXISTS students (
     is_minor BOOLEAN NOT NULL DEFAULT FALSE,
     guardian_name VARCHAR(100),
     guardian_phone VARCHAR(50),
+    course_year VARCHAR(150),
+    school_name VARCHAR(150),
     status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE students ADD COLUMN IF NOT EXISTS is_minor BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS course_year VARCHAR(150);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS school_name VARCHAR(150);
 
 -- 2. Classes / Courses Table
 CREATE TABLE IF NOT EXISTS classes (

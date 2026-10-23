@@ -109,31 +109,31 @@ func SeedMockData(ctx context.Context, pool *pgxpool.Pool) error {
 
 	// 4. Seed 20 Students
 	studentsSQL := `
-		INSERT INTO students (id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, status, created_at, updated_at)
+		INSERT INTO students (id, first_name, last_name, email, phone, is_minor, guardian_name, guardian_phone, course_year, school_name, status, created_at, updated_at)
 		VALUES 
 		-- Menores (Requieren tutor)
-		('f873752e-5612-4f36-9b51-3cfd81b37991', 'Elena', 'Rostova', 'elena.rostova@encina.com', '+34 611 234 567', TRUE, 'Mikhail Rostov', '+34 611 234 500', 'active', NOW(), NOW()),
-		('a12e345b-6789-4def-0123-456789abcdef', 'Kenji', 'Sato', 'kenji.sato@encina.com', '+34 622 345 678', TRUE, 'Aoi Sato', '+34 622 345 600', 'active', NOW(), NOW()),
-		('d45b678e-901c-4012-3456-789012def012', 'Lucía', 'Fernández', 'lucia.fernandez@encina.com', '+34 655 678 901', TRUE, 'Carlos Fernández', '+34 655 678 900', 'active', NOW(), NOW()),
-		('f67d8901-123e-4234-5678-901234f01234', 'Sofía', 'Navarro', 'sofia.navarro@encina.com', '+34 677 890 123', TRUE, 'Andrés Navarro', '+34 677 890 100', 'active', NOW(), NOW()),
-		('52334567-7894-4890-1234-567890567890', 'Daniel', 'Romero', 'daniel.romero@encina.com', '+34 643 456 789', TRUE, 'Javier Romero', '+34 643 456 700', 'active', NOW(), NOW()),
+		('f873752e-5612-4f36-9b51-3cfd81b37991', 'Elena', 'Rostova', 'elena.rostova@encina.com', '+34 611 234 567', TRUE, 'Mikhail Rostov', '+34 611 234 500', '2º Bachillerato', 'IES Virgen Blanca', 'active', NOW(), NOW()),
+		('a12e345b-6789-4def-0123-456789abcdef', 'Kenji', 'Sato', 'kenji.sato@encina.com', '+34 622 345 678', TRUE, 'Aoi Sato', '+34 622 345 600', '4º ESO', 'Colegio San Viator', 'active', NOW(), NOW()),
+		('d45b678e-901c-4012-3456-789012def012', 'Lucía', 'Fernández', 'lucia.fernandez@encina.com', '+34 655 678 901', TRUE, 'Carlos Fernández', '+34 655 678 900', '1º Bachillerato', 'IES Federico Baraibar', 'active', NOW(), NOW()),
+		('f67d8901-123e-4234-5678-901234f01234', 'Sofía', 'Navarro', 'sofia.navarro@encina.com', '+34 677 890 123', TRUE, 'Andrés Navarro', '+34 677 890 100', '3º ESO', 'Colegio Sagrado Corazón', 'active', NOW(), NOW()),
+		('52334567-7894-4890-1234-567890567890', 'Daniel', 'Romero', 'daniel.romero@encina.com', '+34 643 456 789', TRUE, 'Javier Romero', '+34 643 456 700', '2º ESO', 'IES Los Herrán', 'active', NOW(), NOW()),
 
 		-- Mayores de edad (+18 años, contacto directo, sin tutor)
-		('b23f456c-789a-4ef0-1234-567890bcdef0', 'Amara', 'Okafor', 'amara.okafor@encina.com', '+34 633 456 789', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('c34a567d-890b-4f01-2345-678901cdef01', 'Mateo', 'García', 'mateo.garcia@encina.com', '+34 644 567 890', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('e56c789f-012d-4123-4567-890123ef0123', 'Carlos', 'Morales', 'carlos.morales@encina.com', '+34 666 789 012', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('078e9012-234f-4345-6789-012345012345', 'Alejandro', 'Gómez', 'alejandro.gomez@encina.com', '+34 688 901 234', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('189f0123-3450-4456-7890-123456123456', 'Carmen', 'Ruiz', 'carmen.ruiz@encina.com', '+34 699 012 345', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('29001234-4561-4567-8901-234567234567', 'David', 'Torres', 'david.torres@encina.com', '+34 610 123 456', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('30112345-5672-4678-9012-345678345678', 'Javier', 'Martín', 'javier.martin@encina.com', '+34 621 234 567', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('41223456-6783-4789-0123-456789456789', 'Paula', 'Sánchez', 'paula.sanchez@encina.com', '+34 632 345 678', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('63445678-8905-4901-2345-678901678901', 'Alba', 'Vega', 'alba.vega@encina.com', '+34 654 567 890', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('74556789-9016-4012-3456-789012789012', 'Hugo', 'Navarro', 'hugo.navarro@encina.com', '+34 665 678 901', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('85667890-0127-4123-4567-890123890123', 'Irene', 'Delgado', 'irene.delgado@encina.com', '+34 676 789 012', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('96778901-1238-4234-5678-901234901234', 'Gonzalo', 'Castillo', 'gonzalo.castillo@encina.com', '+34 687 890 123', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('a7889012-2349-4345-6789-012345012346', 'Marina', 'Ortiz', 'marina.ortiz@encina.com', '+34 698 901 234', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('b8990123-345a-4456-7890-123456123457', 'Pablo', 'Serrano', 'pablo.serrano@encina.com', '+34 619 012 345', FALSE, NULL, NULL, 'active', NOW(), NOW()),
-		('c9aa1234-456b-4567-8901-234567234568', 'Claudia', 'Reyes', 'claudia.reyes@encina.com', '+34 620 123 456', FALSE, NULL, NULL, 'active', NOW(), NOW())
+		('b23f456c-789a-4ef0-1234-567890bcdef0', 'Amara', 'Okafor', 'amara.okafor@encina.com', '+34 633 456 789', FALSE, NULL, NULL, '1º Grado Ingeniería', 'Universidad del País Vasco (UPV/EHU)', 'active', NOW(), NOW()),
+		('c34a567d-890b-4f01-2345-678901cdef01', 'Mateo', 'García', 'mateo.garcia@encina.com', '+34 644 567 890', FALSE, NULL, NULL, '2º Bachillerato', 'IES Francisco de Vitoria', 'active', NOW(), NOW()),
+		('e56c789f-012d-4123-4567-890123ef0123', 'Carlos', 'Morales', 'carlos.morales@encina.com', '+34 666 789 012', FALSE, NULL, NULL, '2º Grado ADE', 'UPV/EHU', 'active', NOW(), NOW()),
+		('078e9012-234f-4345-6789-012345012345', 'Alejandro', 'Gómez', 'alejandro.gomez@encina.com', '+34 688 901 234', FALSE, NULL, NULL, '1º Bachillerato', 'IES Mendebaldea', 'active', NOW(), NOW()),
+		('189f0123-3450-4456-7890-123456123456', 'Carmen', 'Ruiz', 'carmen.ruiz@encina.com', '+34 699 012 345', FALSE, NULL, NULL, '4º Grado Filología', 'Universidad de Deusto', 'active', NOW(), NOW()),
+		('29001234-4561-4567-8901-234567234567', 'David', 'Torres', 'david.torres@encina.com', '+34 610 123 456', FALSE, NULL, NULL, 'FP Superior DAW', 'CIFP Ciudad Jardín', 'active', NOW(), NOW()),
+		('30112345-5672-4678-9012-345678345678', 'Javier', 'Martín', 'javier.martin@encina.com', '+34 621 234 567', FALSE, NULL, NULL, '2º Bachillerato', 'IES Virgen Blanca', 'active', NOW(), NOW()),
+		('41223456-6783-4789-0123-456789456789', 'Paula', 'Sánchez', 'paula.sanchez@encina.com', '+34 632 345 678', FALSE, NULL, NULL, '3º Grado Medicina', 'UPV/EHU', 'active', NOW(), NOW()),
+		('63445678-8905-4901-2345-678901678901', 'Alba', 'Vega', 'alba.vega@encina.com', '+34 654 567 890', FALSE, NULL, NULL, 'FP Superior DAM', 'CIFP Mendizabala', 'active', NOW(), NOW()),
+		('74556789-9016-4012-3456-789012789012', 'Hugo', 'Navarro', 'hugo.navarro@encina.com', '+34 665 678 901', FALSE, NULL, NULL, '1º Bachillerato', 'IES Koldo Mitxelena', 'active', NOW(), NOW()),
+		('85667890-0127-4123-4567-890123890123', 'Irene', 'Delgado', 'irene.delgado@encina.com', '+34 676 789 012', FALSE, NULL, NULL, 'Conservatorio Profesional', 'Conservatorio Jesús Guridi', 'active', NOW(), NOW()),
+		('96778901-1238-4234-5678-901234901234', 'Gonzalo', 'Castillo', 'gonzalo.castillo@encina.com', '+34 687 890 123', FALSE, NULL, NULL, '2º Bachillerato', 'Colegio San Prudencio', 'active', NOW(), NOW()),
+		('a7889012-2349-4345-6789-012345012346', 'Marina', 'Ortiz', 'marina.ortiz@encina.com', '+34 698 901 234', FALSE, NULL, NULL, '2º Bachillerato', 'IES Ekialdea', 'active', NOW(), NOW()),
+		('b8990123-345a-4456-7890-123456123457', 'Pablo', 'Serrano', 'pablo.serrano@encina.com', '+34 619 012 345', FALSE, NULL, NULL, '4º ESO', 'Colegio Presentación de María', 'active', NOW(), NOW()),
+		('c9aa1234-456b-4567-8901-234567234568', 'Claudia', 'Reyes', 'claudia.reyes@encina.com', '+34 620 123 456', FALSE, NULL, NULL, '3º ESO', 'Colegio Vera Cruz', 'active', NOW(), NOW())
 		ON CONFLICT (id) DO NOTHING;
 	`
 	if _, err := tx.Exec(ctx, studentsSQL); err != nil {

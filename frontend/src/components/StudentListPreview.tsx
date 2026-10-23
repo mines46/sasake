@@ -70,6 +70,13 @@ export const StudentListPreview: React.FC<StudentListPreviewProps> = ({
                         {student.status}
                       </span>
                     </div>
+                    {(student.course_year || student.school_name) && (
+                      <p className="text-[11px] text-indigo-600 font-medium truncate">
+                        {student.course_year}
+                        {student.course_year && student.school_name ? ' • ' : ''}
+                        {student.school_name}
+                      </p>
+                    )}
                     <p className="text-xs text-slate-400 truncate">{student.email}</p>
                   </div>
                 </div>

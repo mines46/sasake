@@ -57,6 +57,8 @@ export interface Student {
   is_minor?: boolean;
   guardian_name?: string;
   guardian_phone?: string;
+  course_year?: string;
+  school_name?: string;
   status: StudentStatus;
   created_at: string;
   updated_at: string;

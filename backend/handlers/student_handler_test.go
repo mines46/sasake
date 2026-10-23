@@ -65,6 +65,8 @@ func (m *mockStudentStore) Create(ctx context.Context, input models.CreateStuden
 		IsMinor:       isMinor,
 		GuardianName:  input.GuardianName,
 		GuardianPhone: input.GuardianPhone,
+		CourseYear:    input.CourseYear,
+		SchoolName:    input.SchoolName,
 		Status:        input.Status,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -83,6 +85,12 @@ func (m *mockStudentStore) Update(ctx context.Context, id string, input models.U
 	}
 	if input.LastName != nil {
 		s.LastName = *input.LastName
+	}
+	if input.CourseYear != nil {
+		s.CourseYear = input.CourseYear
+	}
+	if input.SchoolName != nil {
+		s.SchoolName = input.SchoolName
 	}
 	if input.Status != nil {
 		s.Status = *input.Status
