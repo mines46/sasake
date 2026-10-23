@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   Receipt, 
@@ -16,10 +16,6 @@ import { OfficialReceiptModal } from '../components/OfficialReceiptModal';
 import { AttendanceInvoiceGeneratorModal } from '../components/AttendanceInvoiceGeneratorModal';
 import { NewStudentModal } from '../components/NewStudentModal';
 import { AttendanceModal } from '../components/AttendanceModal';
-import { 
-  mockDashboardMetrics, 
-  mockTodaySchedule, 
-} from '../data/mockData';
 import type { 
   EnrichedInvoice, 
   Student, 
@@ -29,6 +25,8 @@ import type {
   AttendanceStatus 
 } from '../types';
 import { formatCents } from '../utils/formatters';
+import { attendanceApi } from '../api/attendance';
+import { classApi } from '../api/classes';
 
 interface DashboardPageProps {
   searchQuery: string;
@@ -59,9 +57,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onAddStudent,
   classes,
 }) => {
-  // Local state for dashboard metrics
-  const [metrics, setMetrics] = useState<DashboardMetrics>(mockDashboardMetrics);
-  const [schedules] = useState<EnrichedScheduleItem[]>(mockTodaySchedule);
+  // Live attendance metrics
+  const [attendanceData, setAttendanceData] = useState<{
+    rate: number;
+    counts: { present: number; absent: number; late: number; excused: number };
+  }>({
+    rate: 0,
+    counts: { present: 0, absent: 0, late: 0, excused: 0 },
+  });
+
+  // Daily schedules
+  const [schedules, setSchedules] = useState<EnrichedScheduleItem[]>([]);
 
   // Modal states
   const [selectedInvoice, setSelectedInvoice] = useState<EnrichedInvoice | null>(null);
@@ -69,6 +75,82 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   // Timeframe selector state
   const [timeframe, setTimeframe] = useState<'today' | 'week' | 'month'>('today');
+
+  // Fetch live daily attendance metrics on load
+  useEffect(() => {
+    let isMounted = true;
+    attendanceApi
+      .getDailyMetrics()
+      .then((data) => {
+        if (!isMounted || !data) return;
+        setAttendanceData({
+          rate: data.attendance_rate || 0,
+          counts: {
+            present: data.present || 0,
+            absent: data.absent || 0,
+            late: data.late || 0,
+            excused: data.excused || 0,
+          },
+        });
+      })
+      .catch(() => {
+        // Backend unavailable or empty
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch live schedules for current classes
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSchedules = async () => {
+      if (classes.length === 0) {
+        if (isMounted) setSchedules([]);
+        return;
+      }
+
+      try {
+        const todayDay = new Date().getDay() === 0 ? 7 : new Date().getDay(); // 1=Mon ... 7=Sun
+        const schedulePromises = classes.map((c) =>
+          classApi.getSchedules(c.id).catch(() => [])
+        );
+        const results = await Promise.all(schedulePromises);
+        if (!isMounted) return;
+
+        const todayItems: EnrichedScheduleItem[] = [];
+        results.forEach((schList, idx) => {
+          const cls = classes[idx];
+          schList.forEach((sch) => {
+            if (sch.day_of_week === todayDay) {
+              todayItems.push({
+                id: sch.id,
+                class_id: cls.id,
+                class_name: cls.name,
+                room: sch.room || 'Aula',
+                instructor_name: cls.instructor_name || 'Profesor',
+                start_time: sch.start_time,
+                end_time: sch.end_time,
+                day_of_week: sch.day_of_week,
+                capacity: cls.capacity,
+                enrolled_students: 0,
+              });
+            }
+          });
+        });
+        setSchedules(todayItems);
+      } catch (err) {
+        console.error('Error fetching class schedules:', err);
+      }
+    };
+
+    fetchSchedules();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [classes]);
 
   // Dynamically compute live revenue & pending receivables from current invoices
   const { totalRevenueCents, pendingCents, overdueCount } = useMemo(() => {
@@ -87,6 +169,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     });
     return { totalRevenueCents: rev, pendingCents: pend, overdueCount: od };
   }, [invoices]);
+
+  // Computed dashboard metrics
+  const metrics: DashboardMetrics = useMemo(() => {
+    const activeCount = students.filter((s) => s.status === 'active').length;
+    return {
+      total_students: students.length,
+      active_students: activeCount,
+      total_classes: classes.length,
+      attendance_rate_today: attendanceData.rate,
+      today_attendance_counts: attendanceData.counts,
+      monthly_revenue_cents: totalRevenueCents,
+      pending_invoices_cents: pendingCents,
+      overdue_invoices_count: overdueCount,
+    };
+  }, [students, classes, attendanceData, totalRevenueCents, pendingCents, overdueCount]);
+
+  const totalRecordedToday = 
+    attendanceData.counts.present +
+    attendanceData.counts.late +
+    attendanceData.counts.excused +
+    attendanceData.counts.absent;
 
   // Filtered lists based on global search query
   const filteredInvoices = useMemo(() => {
@@ -138,16 +241,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     const total = presentCount + lateCount + excusedCount + absentCount;
     const rate = total ? Math.round(((presentCount + lateCount * 0.8) / total) * 1000) / 10 : 100;
 
-    setMetrics((prev) => ({
-      ...prev,
-      attendance_rate_today: rate,
-      today_attendance_counts: {
+    setAttendanceData({
+      rate,
+      counts: {
         present: presentCount,
         late: lateCount,
         excused: excusedCount,
         absent: absentCount,
       },
-    }));
+    });
   };
 
   return (
@@ -207,18 +309,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         <StatCard
           title="Active Students"
-          value={students.filter((s) => s.status === 'active').length}
-          change="+8.3%"
+          value={metrics.active_students}
+          change={students.length > 0 ? "+8.3%" : "0"}
           isPositive={true}
-          subtitle={`of ${students.length} registered`}
+          subtitle={`of ${metrics.total_students} registered`}
           icon={Users}
           iconColor="indigo"
         />
 
         <StatCard
           title="Today's Attendance"
-          value={`${metrics.attendance_rate_today}%`}
-          change="+1.5%"
+          value={totalRecordedToday > 0 ? `${metrics.attendance_rate_today}%` : "—"}
+          change={totalRecordedToday > 0 ? "+1.5%" : "0"}
           isPositive={true}
           subtitle={`${metrics.today_attendance_counts.present} Present • ${metrics.today_attendance_counts.absent} Absent`}
           icon={CheckCircle2}
@@ -228,7 +330,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <StatCard
           title="Revenue Collected"
           value={formatCents(totalRevenueCents)}
-          change="+14.2%"
+          change={invoices.length > 0 ? "+14.2%" : "0 €"}
           isPositive={true}
           subtitle="From paid session receipts"
           icon={DollarSign}
@@ -315,6 +417,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <AttendanceModal
         isOpen={!!activeScheduleForAttendance}
         schedule={activeScheduleForAttendance}
+        students={students}
         onClose={() => setActiveScheduleForAttendance(null)}
         onSaveAttendance={handleSaveAttendance}
       />

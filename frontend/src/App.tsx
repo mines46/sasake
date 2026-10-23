@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { LoginPage } from './components/LoginPage';
@@ -13,19 +13,18 @@ import {
   ArrowLeft 
 } from 'lucide-react';
 import { 
-  mockRecentInvoices, 
-  mockStudents, 
-  mockClasses,
-  mockEnrollments,
-  mockAttendanceHistory,
-  mockClassSchedules
+  mockEnrollments, 
+  mockAttendanceHistory, 
+  mockClassSchedules 
 } from './data/mockData';
 import type { 
   EnrichedInvoice, 
   Student, 
-  ClassItem,
+  ClassItem, 
   User 
 } from './types';
+import { studentApi } from './api/students';
+import { classApi } from './api/classes';
 import { invoiceApi } from './api/invoices';
 
 const getInitialUser = (): User | null => {
@@ -46,14 +45,57 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // App-level shared states
-  const [invoices, setInvoices] = useState<EnrichedInvoice[]>(mockRecentInvoices);
-  const [students, setStudents] = useState<Student[]>(mockStudents);
-  const [classes, setClasses] = useState<ClassItem[]>(mockClasses);
+  // App-level live data states (clean empty initial arrays for production)
+  const [invoices, setInvoices] = useState<EnrichedInvoice[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+
+  // Fetch live academy data on login
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'admin') {
+      return;
+    }
+
+    let isMounted = true;
+    const loadLiveData = async () => {
+      try {
+        const [studentsRes, classesRes, invoicesRes] = await Promise.allSettled([
+          studentApi.getAll(),
+          classApi.getAll(),
+          invoiceApi.getAll(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (studentsRes.status === 'fulfilled') {
+          setStudents(studentsRes.value);
+        }
+        if (classesRes.status === 'fulfilled') {
+          setClasses(classesRes.value);
+        }
+        if (invoicesRes.status === 'fulfilled') {
+          setInvoices(invoicesRes.value);
+        }
+      } catch (err) {
+        console.error('Failed to load live data:', err);
+      }
+    };
+
+    loadLiveData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
 
   // Quick action modal triggers
   const [isNewStudentOpen, setIsNewStudentOpen] = useState(false);
   const [isNewInvoiceOpen, setIsNewInvoiceOpen] = useState(false);
+
+  // Compute pending & overdue invoices count for sidebar notification badge
+  const dueInvoiceCount = useMemo(() => {
+    return invoices.filter((i) => i.status === 'pending' || i.status === 'overdue').length;
+  }, [invoices]);
 
   // Auth handlers
   const handleLoginSuccess = (user: User, token: string) => {
@@ -105,24 +147,90 @@ function App() {
     );
   };
 
-  const handleAddStudent = (newStudent: Student) => {
-    setStudents((prev) => [newStudent, ...prev]);
+  const handleAddStudent = async (newStudent: Student) => {
+    try {
+      const created = await studentApi.create({
+        first_name: newStudent.first_name,
+        last_name: newStudent.last_name,
+        email: newStudent.email,
+        phone: newStudent.phone,
+        is_minor: newStudent.is_minor,
+        guardian_name: newStudent.guardian_name,
+        guardian_phone: newStudent.guardian_phone,
+        status: newStudent.status,
+      });
+      setStudents((prev) => [created, ...prev.filter((s) => s.id !== created.id)]);
+    } catch (err) {
+      console.error('Failed to create student via API:', err);
+      setStudents((prev) => [newStudent, ...prev]);
+    }
   };
 
-  const handleUpdateStudent = (updatedStudent: Student) => {
-    setStudents((prev) =>
-      prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
-    );
+  const handleUpdateStudent = async (updatedStudent: Student) => {
+    try {
+      const updated = await studentApi.update(updatedStudent.id, {
+        first_name: updatedStudent.first_name,
+        last_name: updatedStudent.last_name,
+        email: updatedStudent.email,
+        phone: updatedStudent.phone,
+        is_minor: updatedStudent.is_minor,
+        guardian_name: updatedStudent.guardian_name,
+        guardian_phone: updatedStudent.guardian_phone,
+        status: updatedStudent.status,
+      });
+      setStudents((prev) =>
+        prev.map((s) => (s.id === updated.id ? updated : s))
+      );
+    } catch (err) {
+      console.error('Failed to update student via API:', err);
+      setStudents((prev) =>
+        prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
+      );
+    }
   };
 
-  const handleAddClass = (newClass: ClassItem) => {
-    setClasses((prev) => [newClass, ...prev]);
+  const handleAddClass = async (newClass: ClassItem) => {
+    try {
+      const created = await classApi.create({
+        name: newClass.name,
+        description: newClass.description,
+        instructor_name: newClass.instructor_name,
+        capacity: newClass.capacity,
+        cost_per_session_cents: newClass.cost_per_session_cents,
+        price_cents: newClass.price_cents,
+        billing_period: newClass.billing_period,
+        class_type: newClass.class_type,
+        is_active: newClass.is_active,
+      });
+      setClasses((prev) => [created, ...prev.filter((c) => c.id !== created.id)]);
+    } catch (err) {
+      console.error('Failed to create class via API:', err);
+      setClasses((prev) => [newClass, ...prev]);
+    }
   };
 
-  const handleUpdateClass = (updatedClass: ClassItem) => {
-    setClasses((prev) =>
-      prev.map((c) => (c.id === updatedClass.id ? updatedClass : c))
-    );
+  const handleUpdateClass = async (updatedClass: ClassItem) => {
+    try {
+      const updated = await classApi.update(updatedClass.id, {
+        name: updatedClass.name,
+        description: updatedClass.description,
+        instructor_name: updatedClass.instructor_name,
+        capacity: updatedClass.capacity,
+        cost_per_session_cents: updatedClass.cost_per_session_cents,
+        price_cents: updatedClass.price_cents,
+        billing_period: updatedClass.billing_period,
+        class_type: updatedClass.class_type,
+        is_active: updatedClass.is_active,
+      });
+      setClasses((prev) =>
+        prev.map((c) => (c.id === updated.id ? updated : c))
+      );
+    } catch (err) {
+      console.error('Failed to update class via API:', err);
+      setClasses((prev) =>
+        prev.map((c) => (c.id === updatedClass.id ? updatedClass : c))
+      );
+    }
   };
 
   // Tab details for remaining secondary modules
@@ -166,6 +274,9 @@ function App() {
         setActiveTab={setActiveTab}
         currentUser={currentUser}
         onLogout={handleLogout}
+        studentCount={students.length}
+        classCount={classes.length}
+        dueInvoiceCount={dueInvoiceCount}
       />
 
       {/* Main Content Area */}

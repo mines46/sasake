@@ -19,6 +19,9 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   currentUser?: User | null;
   onLogout?: () => void;
+  studentCount?: number;
+  classCount?: number;
+  dueInvoiceCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -27,14 +30,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab, 
   setActiveTab,
   currentUser,
-  onLogout
+  onLogout,
+  studentCount,
+  classCount,
+  dueInvoiceCount,
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'students', label: 'Students', icon: Users, badge: '48' },
-    { id: 'classes', label: 'Classes & Courses', icon: BookOpen, badge: '12' },
+    { 
+      id: 'students', 
+      label: 'Students', 
+      icon: Users, 
+      badge: studentCount && studentCount > 0 ? String(studentCount) : undefined 
+    },
+    { 
+      id: 'classes', 
+      label: 'Classes & Courses', 
+      icon: BookOpen, 
+      badge: classCount && classCount > 0 ? String(classCount) : undefined 
+    },
     { id: 'schedule', label: 'Timetable / Schedule', icon: CalendarDays },
-    { id: 'invoices', label: 'Billing & Invoices', icon: Receipt, badgeAlert: '3 due' },
+    { 
+      id: 'invoices', 
+      label: 'Billing & Invoices', 
+      icon: Receipt, 
+      badgeAlert: dueInvoiceCount && dueInvoiceCount > 0 ? `${dueInvoiceCount} due` : undefined 
+    },
     { id: 'settings', label: 'Academy Settings', icon: Settings },
   ];
 

@@ -25,36 +25,48 @@ export const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({
       <div>
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-900">Attendance Today</h2>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-            {metrics.attendance_rate_today}% Rate
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+            total > 0
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+              : 'bg-slate-100 text-slate-500 border border-slate-200'
+          }`}>
+            {total > 0 ? `${metrics.attendance_rate_today}% Rate` : 'No Data'}
           </span>
         </div>
         <p className="text-xs text-slate-500 mt-1">
-          Summary across all completed & active sessions today ({total} total recorded).
+          {total > 0
+            ? `Summary across all completed & active sessions today (${total} total recorded).`
+            : 'No attendance records registered for today.'}
         </p>
 
         {/* Stacked Progress Bar */}
         <div className="mt-4 h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
-          <div
-            style={{ width: `${presentPct}%` }}
-            className="bg-emerald-500 h-full transition-all"
-            title={`Present: ${present} (${presentPct}%)`}
-          />
-          <div
-            style={{ width: `${latePct}%` }}
-            className="bg-amber-400 h-full transition-all"
-            title={`Late: ${late} (${latePct}%)`}
-          />
-          <div
-            style={{ width: `${excusedPct}%` }}
-            className="bg-sky-400 h-full transition-all"
-            title={`Excused: ${excused} (${excusedPct}%)`}
-          />
-          <div
-            style={{ width: `${absentPct}%` }}
-            className="bg-rose-500 h-full transition-all"
-            title={`Absent: ${absent} (${absentPct}%)`}
-          />
+          {total > 0 ? (
+            <>
+              <div
+                style={{ width: `${presentPct}%` }}
+                className="bg-emerald-500 h-full transition-all"
+                title={`Present: ${present} (${presentPct}%)`}
+              />
+              <div
+                style={{ width: `${latePct}%` }}
+                className="bg-amber-400 h-full transition-all"
+                title={`Late: ${late} (${latePct}%)`}
+              />
+              <div
+                style={{ width: `${excusedPct}%` }}
+                className="bg-sky-400 h-full transition-all"
+                title={`Excused: ${excused} (${excusedPct}%)`}
+              />
+              <div
+                style={{ width: `${absentPct}%` }}
+                className="bg-rose-500 h-full transition-all"
+                title={`Absent: ${absent} (${absentPct}%)`}
+              />
+            </>
+          ) : (
+            <div className="w-full bg-slate-200/50 h-full" />
+          )}
         </div>
 
         {/* Breakdown Grid */}

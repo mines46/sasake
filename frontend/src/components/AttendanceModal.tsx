@@ -19,7 +19,6 @@ import type {
   Enrollment, 
   AttendanceStatus 
 } from '../types';
-import { mockStudents, mockEnrollments } from '../data/mockData';
 import { attendanceApi } from '../api/attendance';
 
 interface AttendanceModalProps {
@@ -42,8 +41,8 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   onClose,
   schedule,
   classItem,
-  students = mockStudents,
-  enrollments = mockEnrollments,
+  students = [],
+  enrollments = [],
   onSaveAttendance,
 }) => {
   if (!isOpen || (!schedule && !classItem)) return null;

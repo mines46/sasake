@@ -9,7 +9,7 @@ import {
   Info,
   Loader2
 } from 'lucide-react';
-import { mockStudents, mockClasses, mockEnrollments, mockAttendanceHistory, mockClassSchedules } from '../data/mockData';
+import { mockEnrollments, mockAttendanceHistory, mockClassSchedules } from '../data/mockData';
 import type { EnrichedInvoice, ClassItem, Student } from '../types';
 import { calculateStudentAttendanceBilling } from '../utils/billingCalculator';
 import { formatCents } from '../utils/formatters';
@@ -27,10 +27,10 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
   isOpen,
   onClose,
   onInvoiceCreated,
-  classes = mockClasses,
-  students = mockStudents,
+  classes = [],
+  students = [],
 }) => {
-  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || mockStudents[0]?.id || '');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [startDate, setStartDate] = useState('2026-09-01');
   const [endDate, setEndDate] = useState('2026-09-30');
   const [discountDollars, setDiscountDollars] = useState('0');
@@ -39,17 +39,22 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Derive active student id (fallback to first available student if current selection is invalid)
+  const activeStudentId = selectedStudentId && students.some((s) => s.id === selectedStudentId)
+    ? selectedStudentId
+    : students[0]?.id || '';
+
   // Find student info
   const selectedStudent = useMemo(
-    () => students.find((s) => s.id === selectedStudentId) || mockStudents.find((s) => s.id === selectedStudentId),
-    [students, selectedStudentId]
+    () => students.find((s) => s.id === activeStudentId),
+    [students, activeStudentId]
   );
 
   // Compute live billing calculation using our engine
   const calculation = useMemo(() => {
     const discountCents = Math.round(parseFloat(discountDollars || '0') * 100);
     return calculateStudentAttendanceBilling({
-      studentId: selectedStudentId,
+      studentId: activeStudentId,
       startDate,
       endDate,
       enrollments: mockEnrollments,
@@ -58,7 +63,7 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
       schedules: mockClassSchedules,
       discountCents,
     });
-  }, [selectedStudentId, startDate, endDate, discountDollars, classes]);
+  }, [activeStudentId, startDate, endDate, discountDollars, classes]);
 
   if (!isOpen) return null;
 
@@ -150,15 +155,19 @@ export const AttendanceInvoiceGeneratorModal: React.FC<AttendanceInvoiceGenerato
                 Student Profile
               </label>
               <select
-                value={selectedStudentId}
+                value={activeStudentId}
                 onChange={(e) => setSelectedStudentId(e.target.value)}
                 className="w-full text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
               >
-                {mockStudents.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.first_name} {s.last_name}
-                  </option>
-                ))}
+                {students.length === 0 ? (
+                  <option value="">No hay alumnos registrados</option>
+                ) : (
+                  students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.first_name} {s.last_name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
